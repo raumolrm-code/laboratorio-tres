@@ -5,15 +5,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Clase responsable del análisis semántico y la interpretación de expresiones lógicas.
- * Mantiene una tabla de símbolos mediante una lista de objetos y valida la integridad
- * de los tipos de datos durante el recorrido del árbol.
+ * Motor central de análisis semántico.
+ * Evalúa las expresiones dinámicamente conservando los tipos (int o boolean)
+ * en operaciones anidadas para evitar falsos positivos en el tipado estricto.
  */
 public class EvaluadorSemantico extends LaboratorioBaseVisitor<Object> {
 
-    /**
-     * Estructura de datos que almacena la información de cada variable en memoria.
-     */
     static class Variable {
         String nombre;
         String tipo;
@@ -28,15 +25,25 @@ public class EvaluadorSemantico extends LaboratorioBaseVisitor<Object> {
 
     private final List<Variable> tablaSimbolos = new ArrayList<>();
     public final List<String> erroresSemanticos = new ArrayList<>();
+    
+    private Object resultadoUltimaExpresion = null;
 
-    /**
-     * Localiza una variable en la tabla de símbolos mediante búsqueda lineal.
-     */
     private Variable buscarVariable(String nombre) {
         for (Variable var : tablaSimbolos) {
             if (var.nombre.equals(nombre)) return var;
         }
         return null;
+    }
+
+    @Override
+    public Object visitProg(LaboratorioParser.ProgContext ctx) {
+        for (LaboratorioParser.InstruccionContext instruccion : ctx.instruccion()) {
+            Object res = visit(instruccion);
+            if (instruccion.expresion() != null) {
+                resultadoUltimaExpresion = res;
+            }
+        }
+        return resultadoUltimaExpresion;
     }
 
     @Override
@@ -75,11 +82,13 @@ public class EvaluadorSemantico extends LaboratorioBaseVisitor<Object> {
         Object izq = visit(ctx.expresion(0));
         Object der = visit(ctx.expresion(1));
 
+        // Si alguna rama falló previamente, propagamos el nulo
         if (izq == null || der == null) return null;
 
         String tIzq = determinarTipo(izq);
         String tDer = determinarTipo(der);
 
+        // Validación de Tipado Estricto
         if (!tIzq.equals(tDer)) {
             erroresSemanticos.add("Error semántico: No se pueden combinar variables de distintos tipos en una misma expresión.");
             return null;
@@ -90,7 +99,17 @@ public class EvaluadorSemantico extends LaboratorioBaseVisitor<Object> {
             return null;
         }
 
-        return (Boolean) (convertirABooleano(izq) && convertirABooleano(der));
+        // Evaluación lógica
+        boolean bIzq = convertirABooleano(izq);
+        boolean bDer = convertirABooleano(der);
+        boolean resultadoLogico = bIzq && bDer;
+
+        // CRÍTICO: Si operamos enteros, devolvemos un entero para no romper el tipado en árboles grandes (Entrada 2)
+        if (tIzq.equals("int")) {
+            return resultadoLogico ? 1 : 0;
+        } else {
+            return resultadoLogico;
+        }
     }
 
     @Override
@@ -98,11 +117,19 @@ public class EvaluadorSemantico extends LaboratorioBaseVisitor<Object> {
         Object valor = visit(ctx.expresion());
         if (valor == null) return null;
 
-        if (determinarTipo(valor).equals("string")) {
+        String tipo = determinarTipo(valor);
+
+        if (tipo.equals("string")) {
             erroresSemanticos.add("Error semántico: Las variables de tipo string no están permitidas en expresiones booleanas.");
             return null;
         }
-        return (Boolean) (!convertirABooleano(valor));
+
+        // CRÍTICO: Conservar el dominio del tipo
+        if (tipo.equals("int")) {
+            return (Integer) valor == 0 ? 1 : 0;
+        } else {
+            return !((Boolean) valor);
+        }
     }
 
     @Override
@@ -127,19 +154,20 @@ public class EvaluadorSemantico extends LaboratorioBaseVisitor<Object> {
         return "string";
     }
 
-    private boolean convertirABooleano(Object obj) {
+    public boolean convertirABooleano(Object obj) {
         if (obj instanceof Boolean) return (Boolean) obj;
-        if (obj instanceof Integer) return (Integer) obj != 0;
+        if (obj instanceof Integer) return ((Integer) obj) != 0;
         return false;
     }
 
-    /**
-     * Genera la representación visual de la tabla de símbolos.
-     */
+    public Object obtenerResultadoCrudo() {
+        return resultadoUltimaExpresion;
+    }
+
     public void imprimirTabla() {
-        System.out.println("\nVARIABLE | TIPO | VALOR");
+        System.out.println("VARIABLE | TIPO | VALOR\n");
         for (Variable var : tablaSimbolos) {
-            System.out.println(var.nombre + " | " + var.tipo + " | " + var.valor);
+            System.out.println(var.nombre + " | " + var.tipo + " | " + var.valor + "\n");
         }
     }
 }
