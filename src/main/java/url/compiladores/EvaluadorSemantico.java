@@ -6,8 +6,8 @@ import java.util.List;
 
 /**
  * Motor central de análisis semántico.
- * Evalúa las expresiones dinámicamente conservando los tipos (int o boolean)
- * en operaciones anidadas para evitar falsos positivos en el tipado estricto.
+ * Evalúa las expresiones dinámicamente conservando los tipos en operaciones anidadas
+ * y garantiza la construcción de la Tabla de Símbolos incondicionalmente.
  */
 public class EvaluadorSemantico extends LaboratorioBaseVisitor<Object> {
 
@@ -82,13 +82,11 @@ public class EvaluadorSemantico extends LaboratorioBaseVisitor<Object> {
         Object izq = visit(ctx.expresion(0));
         Object der = visit(ctx.expresion(1));
 
-        // Si alguna rama falló previamente, propagamos el nulo
         if (izq == null || der == null) return null;
 
         String tIzq = determinarTipo(izq);
         String tDer = determinarTipo(der);
 
-        // Validación de Tipado Estricto
         if (!tIzq.equals(tDer)) {
             erroresSemanticos.add("Error semántico: No se pueden combinar variables de distintos tipos en una misma expresión.");
             return null;
@@ -99,12 +97,11 @@ public class EvaluadorSemantico extends LaboratorioBaseVisitor<Object> {
             return null;
         }
 
-        // Evaluación lógica
         boolean bIzq = convertirABooleano(izq);
         boolean bDer = convertirABooleano(der);
         boolean resultadoLogico = bIzq && bDer;
 
-        // CRÍTICO: Si operamos enteros, devolvemos un entero para no romper el tipado en árboles grandes (Entrada 2)
+        // Preservamos el dominio entero para validaciones anidadas (Ej. Entrada 2)
         if (tIzq.equals("int")) {
             return resultadoLogico ? 1 : 0;
         } else {
@@ -124,7 +121,6 @@ public class EvaluadorSemantico extends LaboratorioBaseVisitor<Object> {
             return null;
         }
 
-        // CRÍTICO: Conservar el dominio del tipo
         if (tipo.equals("int")) {
             return (Integer) valor == 0 ? 1 : 0;
         } else {
@@ -155,6 +151,7 @@ public class EvaluadorSemantico extends LaboratorioBaseVisitor<Object> {
     }
 
     public boolean convertirABooleano(Object obj) {
+        if (obj == null) return false; // Fallback seguro
         if (obj instanceof Boolean) return (Boolean) obj;
         if (obj instanceof Integer) return ((Integer) obj) != 0;
         return false;
@@ -164,10 +161,17 @@ public class EvaluadorSemantico extends LaboratorioBaseVisitor<Object> {
         return resultadoUltimaExpresion;
     }
 
+    /**
+     * IMPRESIÓN OBLIGATORIA DE LA TABLA.
+     */
     public void imprimirTabla() {
         System.out.println("VARIABLE | TIPO | VALOR\n");
-        for (Variable var : tablaSimbolos) {
-            System.out.println(var.nombre + " | " + var.tipo + " | " + var.valor + "\n");
+        if (tablaSimbolos.isEmpty()) {
+            System.out.println("(No hay variables declaradas)");
+        } else {
+            for (Variable var : tablaSimbolos) {
+                System.out.println(var.nombre + " | " + var.tipo + " | " + var.valor + "\n");
+            }
         }
     }
 }

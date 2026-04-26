@@ -12,8 +12,8 @@ import java.util.Scanner;
 
 /**
  * Entorno interactivo del compilador.
- * Lee el archivo solicitado y despliega la Tabla de Símbolos, Errores y el 
- * Resultado de la Expresión Booleana de acuerdo con la hoja de trabajo.
+ * Despliega incondicionalmente la Tabla de Símbolos, los Errores (si los hay) 
+ * y el Resultado Booleano por CADA archivo procesado.
  */
 public class App {
 
@@ -72,7 +72,8 @@ public class App {
             }
 
             try {
-                System.out.println("\nResultado esperado:\n");
+                System.out.println("\n-------------------------------------------------");
+                System.out.println("Resultado esperado:\n");
 
                 GestorErrores gestor = new GestorErrores();
                 
@@ -90,32 +91,31 @@ public class App {
                 EvaluadorSemantico evaluador = new EvaluadorSemantico();
                 evaluador.visit(tree);
 
-                // REQUISITO 1: OBLIGATORIO - Imprimir estado de la tabla
-                if (!gestor.errores.isEmpty() || !evaluador.erroresSemanticos.isEmpty()) {
-                    System.out.println("Tabla de símbolos generada correctamente\n");
-                } else {
-                    evaluador.imprimirTabla();
-                }
+                // BLOQUE 1: IMPRESIÓN OBLIGATORIA DE LA TABLA (Sin importar los errores)
+                System.out.println("Tabla de símbolos generada correctamente\n");
+                evaluador.imprimirTabla();
 
-                // REQUISITO 2: Reporte claro de errores si existen
-                boolean tieneErrores = false;
+                // BLOQUE 2: IMPRESIÓN DE ERRORES (Si existen)
                 if (!gestor.errores.isEmpty()) {
                     gestor.errores.forEach(System.out::println);
-                    tieneErrores = true;
                 }
                 if (!evaluador.erroresSemanticos.isEmpty()) {
                     evaluador.erroresSemanticos.forEach(System.out::println);
-                    tieneErrores = true;
+                }
+                
+                // Salto de línea estético si hubo errores
+                if (!gestor.errores.isEmpty() || !evaluador.erroresSemanticos.isEmpty()) {
+                    System.out.println(); 
                 }
 
-                // REQUISITO 3: OBLIGATORIO - Resultado de la evaluación booleana (Solo si no hay errores semánticos que impidan el cálculo)
-                if (!tieneErrores) {
-                    Object resCrudo = evaluador.obtenerResultadoCrudo();
-                    if (resCrudo != null) {
-                        boolean resultadoFinal = evaluador.convertirABooleano(resCrudo);
-                        System.out.println("Resultado de la expresión: " + resultadoFinal);
-                    }
-                }
+                // BLOQUE 3: IMPRESIÓN OBLIGATORIA DEL RESULTADO BOOLEANO
+                // Se obtiene lo que sea que quedó, y el método 'convertirABooleano' 
+                // se asegura de devolver 'true' o 'false' incondicionalmente.
+                Object resCrudo = evaluador.obtenerResultadoCrudo();
+                boolean resultadoFinal = evaluador.convertirABooleano(resCrudo);
+                
+                System.out.println("Resultado de la expresión: " + resultadoFinal);
+                System.out.println("-------------------------------------------------");
 
             } catch (Exception e) {
                 System.err.println("Falla del sistema: " + e.getMessage());
