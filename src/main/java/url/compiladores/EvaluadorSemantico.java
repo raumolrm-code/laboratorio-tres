@@ -5,14 +5,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Implementación del analizador semántico mediante el recorrido del árbol de derivación.
- * Utiliza una lista dinámica para la gestión manual de la tabla de símbolos y aplica
- * validaciones de tipado estricto.
+ * Clase responsable del análisis semántico y la interpretación de expresiones lógicas.
+ * Mantiene una tabla de símbolos mediante una lista de objetos y valida la integridad
+ * de los tipos de datos durante el recorrido del árbol.
  */
 public class EvaluadorSemantico extends LaboratorioBaseVisitor<Object> {
 
     /**
-     * Define la estructura de los datos que se almacenarán en la memoria del compilador.
+     * Estructura de datos que almacena la información de cada variable en memoria.
      */
     static class Variable {
         String nombre;
@@ -30,7 +30,7 @@ public class EvaluadorSemantico extends LaboratorioBaseVisitor<Object> {
     public final List<String> erroresSemanticos = new ArrayList<>();
 
     /**
-     * Ejecuta una búsqueda lineal para determinar si una variable ya fue declarada.
+     * Localiza una variable en la tabla de símbolos mediante búsqueda lineal.
      */
     private Variable buscarVariable(String nombre) {
         for (Variable var : tablaSimbolos) {
@@ -77,32 +77,32 @@ public class EvaluadorSemantico extends LaboratorioBaseVisitor<Object> {
 
         if (izq == null || der == null) return null;
 
-        String tipoIzq = determinarTipo(izq);
-        String tipoDer = determinarTipo(der);
+        String tIzq = determinarTipo(izq);
+        String tDer = determinarTipo(der);
 
-        if (!tipoIzq.equals(tipoDer)) {
+        if (!tIzq.equals(tDer)) {
             erroresSemanticos.add("Error semántico: No se pueden combinar variables de distintos tipos en una misma expresión.");
             return null;
         }
 
-        if (tipoIzq.equals("string")) {
+        if (tIzq.equals("string")) {
             erroresSemanticos.add("Error semántico: Las variables de tipo string no están permitidas en expresiones booleanas.");
             return null;
         }
 
-        return convertirABooleano(izq) && convertirABooleano(der);
+        return (Boolean) (convertirABooleano(izq) && convertirABooleano(der));
     }
 
     @Override
     public Object visitExprNot(LaboratorioParser.ExprNotContext ctx) {
         Object valor = visit(ctx.expresion());
         if (valor == null) return null;
-        
+
         if (determinarTipo(valor).equals("string")) {
             erroresSemanticos.add("Error semántico: Las variables de tipo string no están permitidas en expresiones booleanas.");
             return null;
         }
-        return !convertirABooleano(valor);
+        return (Boolean) (!convertirABooleano(valor));
     }
 
     @Override
@@ -127,9 +127,6 @@ public class EvaluadorSemantico extends LaboratorioBaseVisitor<Object> {
         return "string";
     }
 
-    /**
-     * Aplica la regla de negocio donde 0 representa false y los demás números true.
-     */
     private boolean convertirABooleano(Object obj) {
         if (obj instanceof Boolean) return (Boolean) obj;
         if (obj instanceof Integer) return (Integer) obj != 0;
@@ -137,13 +134,12 @@ public class EvaluadorSemantico extends LaboratorioBaseVisitor<Object> {
     }
 
     /**
-     * Despliega el contenido de la tabla de símbolos utilizando el espaciado
-     * exacto requerido en el documento.
+     * Genera la representación visual de la tabla de símbolos.
      */
     public void imprimirTabla() {
-        System.out.println("VARIABLE | TIPO | VALOR\n");
+        System.out.println("\nVARIABLE | TIPO | VALOR");
         for (Variable var : tablaSimbolos) {
-            System.out.println(var.nombre + " | " + var.tipo + " | " + var.valor + "\n");
+            System.out.println(var.nombre + " | " + var.tipo + " | " + var.valor);
         }
     }
 }
